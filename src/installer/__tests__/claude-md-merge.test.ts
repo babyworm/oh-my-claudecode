@@ -219,4 +219,47 @@ User added custom stuff here`;
       expect(result).toContain(USER_CUSTOMIZATIONS);
     });
   });
+
+  describe('idempotency guard', () => {
+    it('strips markers from omcContent that already has markers', () => {
+      // Simulate docs/CLAUDE.md shipping with markers already
+      const omcWithMarkers = `<!-- OMC:START -->
+# oh-my-claudecode
+Agent instructions here
+<!-- OMC:END -->`;
+
+      const result = mergeClaudeMd(null, omcWithMarkers);
+
+      // Should NOT have nested markers
+      const startCount = (result.match(/<!-- OMC:START -->/g) || []).length;
+      const endCount = (result.match(/<!-- OMC:END -->/g) || []).length;
+      expect(startCount).toBe(1);
+      expect(endCount).toBe(1);
+      expect(result).toContain('Agent instructions here');
+    });
+
+    it('handles omcContent with markers when merging into existing content', () => {
+      const existingContent = `<!-- OMC:START -->
+Old OMC content
+<!-- OMC:END -->
+
+<!-- User customizations -->
+My custom stuff`;
+
+      const omcWithMarkers = `<!-- OMC:START -->
+New OMC content v2
+<!-- OMC:END -->`;
+
+      const result = mergeClaudeMd(existingContent, omcWithMarkers);
+
+      // Should have exactly one pair of markers
+      const startCount = (result.match(/<!-- OMC:START -->/g) || []).length;
+      const endCount = (result.match(/<!-- OMC:END -->/g) || []).length;
+      expect(startCount).toBe(1);
+      expect(endCount).toBe(1);
+      expect(result).toContain('New OMC content v2');
+      expect(result).not.toContain('Old OMC content');
+      expect(result).toContain('My custom stuff');
+    });
+  });
 });

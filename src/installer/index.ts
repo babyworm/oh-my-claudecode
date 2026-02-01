@@ -200,9 +200,23 @@ export function mergeClaudeMd(existingContent: string | null, omcContent: string
   const END_MARKER = '<!-- OMC:END -->';
   const USER_CUSTOMIZATIONS = '<!-- User customizations -->';
 
+  // Idempotency guard: strip markers from omcContent if already present
+  // This handles the case where docs/CLAUDE.md ships with markers
+  let cleanOmcContent = omcContent;
+  if (omcContent.includes(START_MARKER) && omcContent.includes(END_MARKER)) {
+    const omcStartIdx = omcContent.indexOf(START_MARKER);
+    const omcEndIdx = omcContent.indexOf(END_MARKER);
+    if (omcStartIdx < omcEndIdx) {
+      // Extract content between markers, trimming any surrounding whitespace
+      cleanOmcContent = omcContent
+        .substring(omcStartIdx + START_MARKER.length, omcEndIdx)
+        .trim();
+    }
+  }
+
   // Case 1: No existing content - wrap omcContent in markers
   if (!existingContent) {
-    return `${START_MARKER}\n${omcContent}\n${END_MARKER}\n`;
+    return `${START_MARKER}\n${cleanOmcContent}\n${END_MARKER}\n`;
   }
 
   // Case 2: Existing content has both markers - replace content between markers
@@ -214,17 +228,17 @@ export function mergeClaudeMd(existingContent: string | null, omcContent: string
     const beforeMarker = existingContent.substring(0, startIndex);
     const afterMarker = existingContent.substring(endIndex + END_MARKER.length);
 
-    return `${beforeMarker}${START_MARKER}\n${omcContent}\n${END_MARKER}${afterMarker}`;
+    return `${beforeMarker}${START_MARKER}\n${cleanOmcContent}\n${END_MARKER}${afterMarker}`;
   }
 
   // Case 3: Corrupted markers (START without END or vice versa)
   if (startIndex !== -1 || endIndex !== -1) {
     // Handle corrupted state - backup will be created by caller
-    return `${START_MARKER}\n${omcContent}\n${END_MARKER}\n\n<!-- User customizations (recovered from corrupted markers) -->\n${existingContent}`;
+    return `${START_MARKER}\n${cleanOmcContent}\n${END_MARKER}\n\n<!-- User customizations (recovered from corrupted markers) -->\n${existingContent}`;
   }
 
   // Case 4: No markers - wrap omcContent in markers, preserve existing after user customizations header
-  return `${START_MARKER}\n${omcContent}\n${END_MARKER}\n\n${USER_CUSTOMIZATIONS}\n${existingContent}`;
+  return `${START_MARKER}\n${cleanOmcContent}\n${END_MARKER}\n\n${USER_CUSTOMIZATIONS}\n${existingContent}`;
 }
 
 /**

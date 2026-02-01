@@ -154,7 +154,7 @@ OLD_VERSION=$(grep -m1 "^# oh-my-claudecode" "$TARGET_PATH" 2>/dev/null | grep -
 
 # Backup existing
 if [ -f "$TARGET_PATH" ]; then
-  BACKUP_DATE=$(date +%Y-%m-%d)
+  BACKUP_DATE=$(date +%Y-%m-%d_%H%M%S)
   BACKUP_PATH="${TARGET_PATH}.backup.${BACKUP_DATE}"
   cp "$TARGET_PATH" "$BACKUP_PATH"
   echo "Backed up existing CLAUDE.md to $BACKUP_PATH"
@@ -162,11 +162,30 @@ fi
 
 # Download fresh OMC content to temp file
 TEMP_OMC=$(mktemp /tmp/omc-claude-XXXXXX.md)
+trap 'rm -f "$TEMP_OMC"' EXIT
 curl -fsSL "https://raw.githubusercontent.com/Yeachan-Heo/oh-my-claudecode/main/docs/CLAUDE.md" -o "$TEMP_OMC"
 
+if [ ! -s "$TEMP_OMC" ]; then
+  echo "ERROR: Failed to download CLAUDE.md. Aborting."
+  rm -f "$TEMP_OMC"
+  return 1
+fi
+
+# Strip existing markers from downloaded content (idempotency)
+if grep -q '<!-- OMC:START -->' "$TEMP_OMC"; then
+  # Extract content between markers
+  sed -n '/<!-- OMC:START -->/,/<!-- OMC:END -->/{//!p}' "$TEMP_OMC" > "${TEMP_OMC}.clean"
+  mv "${TEMP_OMC}.clean" "$TEMP_OMC"
+fi
+
 if [ ! -f "$TARGET_PATH" ]; then
-  # Fresh install: just use downloaded file as-is
-  mv "$TEMP_OMC" "$TARGET_PATH"
+  # Fresh install: wrap in markers
+  {
+    echo '<!-- OMC:START -->'
+    cat "$TEMP_OMC"
+    echo '<!-- OMC:END -->'
+  } > "$TARGET_PATH"
+  rm -f "$TEMP_OMC"
   echo "Installed CLAUDE.md (fresh)"
 else
   # Merge: preserve user content outside OMC markers
@@ -180,7 +199,8 @@ else
       cat "$TEMP_OMC"
       echo '<!-- OMC:END -->'
       [ -n "$AFTER_OMC" ] && printf '%s\n' "$AFTER_OMC"
-    } > "$TARGET_PATH"
+    } > "${TARGET_PATH}.tmp"
+    mv "${TARGET_PATH}.tmp" "$TARGET_PATH"
     echo "Updated OMC section (user customizations preserved)"
   else
     # No markers: wrap new content in markers, append old content as user section
@@ -192,7 +212,8 @@ else
       echo ""
       echo "<!-- User customizations (migrated from previous CLAUDE.md) -->"
       printf '%s\n' "$OLD_CONTENT"
-    } > "$TARGET_PATH"
+    } > "${TARGET_PATH}.tmp"
+    mv "${TARGET_PATH}.tmp" "$TARGET_PATH"
     echo "Migrated existing CLAUDE.md (added OMC markers, preserved old content)"
   fi
   rm -f "$TEMP_OMC"
@@ -272,7 +293,7 @@ OLD_VERSION=$(grep -m1 "^# oh-my-claudecode" "$TARGET_PATH" 2>/dev/null | grep -
 
 # Backup existing
 if [ -f "$TARGET_PATH" ]; then
-  BACKUP_DATE=$(date +%Y-%m-%d)
+  BACKUP_DATE=$(date +%Y-%m-%d_%H%M%S)
   BACKUP_PATH="${TARGET_PATH}.backup.${BACKUP_DATE}"
   cp "$TARGET_PATH" "$BACKUP_PATH"
   echo "Backed up existing CLAUDE.md to $BACKUP_PATH"
@@ -280,11 +301,30 @@ fi
 
 # Download fresh OMC content to temp file
 TEMP_OMC=$(mktemp /tmp/omc-claude-XXXXXX.md)
+trap 'rm -f "$TEMP_OMC"' EXIT
 curl -fsSL "https://raw.githubusercontent.com/Yeachan-Heo/oh-my-claudecode/main/docs/CLAUDE.md" -o "$TEMP_OMC"
 
+if [ ! -s "$TEMP_OMC" ]; then
+  echo "ERROR: Failed to download CLAUDE.md. Aborting."
+  rm -f "$TEMP_OMC"
+  return 1
+fi
+
+# Strip existing markers from downloaded content (idempotency)
+if grep -q '<!-- OMC:START -->' "$TEMP_OMC"; then
+  # Extract content between markers
+  sed -n '/<!-- OMC:START -->/,/<!-- OMC:END -->/{//!p}' "$TEMP_OMC" > "${TEMP_OMC}.clean"
+  mv "${TEMP_OMC}.clean" "$TEMP_OMC"
+fi
+
 if [ ! -f "$TARGET_PATH" ]; then
-  # Fresh install: just use downloaded file as-is
-  mv "$TEMP_OMC" "$TARGET_PATH"
+  # Fresh install: wrap in markers
+  {
+    echo '<!-- OMC:START -->'
+    cat "$TEMP_OMC"
+    echo '<!-- OMC:END -->'
+  } > "$TARGET_PATH"
+  rm -f "$TEMP_OMC"
   echo "Installed CLAUDE.md (fresh)"
 else
   # Merge: preserve user content outside OMC markers
@@ -298,7 +338,8 @@ else
       cat "$TEMP_OMC"
       echo '<!-- OMC:END -->'
       [ -n "$AFTER_OMC" ] && printf '%s\n' "$AFTER_OMC"
-    } > "$TARGET_PATH"
+    } > "${TARGET_PATH}.tmp"
+    mv "${TARGET_PATH}.tmp" "$TARGET_PATH"
     echo "Updated OMC section (user customizations preserved)"
   else
     # No markers: wrap new content in markers, append old content as user section
@@ -310,7 +351,8 @@ else
       echo ""
       echo "<!-- User customizations (migrated from previous CLAUDE.md) -->"
       printf '%s\n' "$OLD_CONTENT"
-    } > "$TARGET_PATH"
+    } > "${TARGET_PATH}.tmp"
+    mv "${TARGET_PATH}.tmp" "$TARGET_PATH"
     echo "Migrated existing CLAUDE.md (added OMC markers, preserved old content)"
   fi
   rm -f "$TEMP_OMC"
