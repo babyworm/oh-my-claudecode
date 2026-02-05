@@ -31,7 +31,7 @@ export const GEMINI_MODEL_FALLBACKS = [
 ];
 
 // Gemini is best for design review and implementation tasks (leverages 1M context)
-export const GEMINI_VALID_ROLES = ['designer', 'executor'] as const;
+export const GEMINI_VALID_ROLES = ['designer', 'writer', 'vision'] as const;
 
 export const MAX_CONTEXT_FILES = 20;
 export const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB per file
